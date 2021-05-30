@@ -30,6 +30,7 @@ public final class RemoteFeedLoader: FeedLoader {
         }
         do {
           let _  = try JSONSerialization.jsonObject(with: data, options: [])
+          completion(.success([]))
         } catch {
           completion(.failure(Error.invalidData))
         }
