@@ -20,61 +20,21 @@ public final class RemoteFeedLoader: FeedLoader {
   
   public func load(completion: @escaping (FeedLoader.Result) -> Void) {
     client.get(from: self.url) { [weak self] (result) in
-      guard let self = self else { return }
+      guard let _ = self else { return }
       switch result {
       case .failure(_):
         completion(.failure(Error.connectivity))
       case .success((let data, let response)):
-        if response.statusCode != 200 {
+        guard response.statusCode == 200 else {
           completion(.failure(Error.invalidData))
           return
         }
-        do {
-          let jsonObj = try JSONSerialization.jsonObject(with: data, options: [])
-          if let rootJSONDict = jsonObj as? [String:Any] {
-            if let dicts = rootJSONDict["items"] as? [[String:Any]] {
-              let images = dicts.compactMap({ self.imageForDict($0) })
-              completion(.success(images))
-              return
-            }
-          }
-          completion(.success([]))
-        } catch {
+        guard let images = FeedImageMapper().imagesForData(data) else {
           completion(.failure(Error.invalidData))
+          return
         }
+        completion(.success(images))
       }
     }
-  }
-  
-  
-  private func imageForDict(_ dict: [String: Any]) -> FeedImage? {
-    guard let uuid = self.uuidForDict(dict) else {
-        return nil
-    }
-    guard let url = self.imageURLforDict(dict) else {
-        return nil
-    }
-    let description = dict["image_desc"] as? String
-    let location = dict["image_loc"] as? String
-    return FeedImage(id: uuid,
-                     description: description,
-                     location: location,
-                     url: url)
-  }
-  
-  private func uuidForDict(_ dict: [String: Any]) -> UUID? {
-    guard let id = dict["image_id"] as? String,
-      let uuid = UUID(uuidString: id) else {
-        return nil
-    }
-    return uuid
-  }
-  
-  private func imageURLforDict(_ dict: [String: Any]) -> URL? {
-    guard let imageURL = dict["image_url"] as? String,
-      let url = URL(string: imageURL) else {
-        return nil
-    }
-    return url
   }
 }
